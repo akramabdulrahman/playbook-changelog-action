@@ -659,6 +659,22 @@ test('installer: package.json exposes the repo so npx can resolve a tag', () => 
 
 test('installer: only a PRIVATE cross-owner action needs vendoring', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'install.js'), 'utf8');
-  assert.match(src, /const needsVendor = crossOwner && !actionIsPublic/, 'public cross-owner must not vendor');
-  assert.match(src, /json\.private === false/, 'visibility must come from the API, not be assumed');
+  assert.match(src, /needsVendor = crossOwner && visibility === false/, 'public cross-owner must not vendor');
+  assert.match(src, /data\.private === false/, 'visibility must come from the API, not be assumed');
+});
+
+test('installer: a rate-limited API is explained, never silently vendored', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'install.js'), 'utf8');
+  assert.match(src, /x-ratelimit-remaining/, 'must detect the rate limit specifically');
+  assert.match(src, /unauthenticated API limit \(60\/hour per IP\)/, 'must say what went wrong');
+  assert.match(src, /gh auth login/, 'must say how to fix it');
+  assert.match(src, /visibility === null && crossOwner/, 'unknown visibility must not default to vendoring');
+  assert.match(src, /needsVendor = crossOwner && visibility === false/, 'only a known-private action vendors');
+});
+
+test('installer: prefers the gh CLI over unauthenticated requests', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'install.js'), 'utf8');
+  const api = src.split('async function ghApi')[1].split('async function isPublicRepo')[0];
+  assert.ok(api.indexOf("sh('gh'") < api.indexOf('await fetch'), 'gh must be tried before raw fetch');
+  assert.match(api, /GH_TOKEN \|\| process\.env\.GITHUB_TOKEN/, 'an env token is the second route');
 });

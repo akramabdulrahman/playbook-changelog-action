@@ -57,32 +57,57 @@ function inspectTarget() {
   return { root, slug, defaultBranch, owner: slug ? slug.split('/')[0] : null };
 }
 
-/** Is the action repo public? A public action resolves across owners; a private one does not. */
-async function isPublicRepo(slug) {
-  if (!slug) return false;
+/**
+ * One GitHub API call, by the best available route.
+ *
+ * Unauthenticated requests are limited to 60/hour per IP — easily exhausted on a shared
+ * network. Falling back silently would make the installer vendor an unpinned copy, so
+ * failures are reported, never swallowed.
+ *
+ * Returns { data } on success, or { error } describing why not.
+ */
+async function ghApi(pathname) {
+  // 1. gh CLI, if installed and authenticated: 5000/hour and no token handling here.
+  if (sh('gh', ['auth', 'status']) !== null || sh('gh', ['--version'])) {
+    const out = sh('gh', ['api', pathname]);
+    if (out) {
+      try { return { data: JSON.parse(out) }; } catch { /* fall through */ }
+    }
+  }
+  // 2. A token from the environment, if the caller supplied one.
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  const headers = { accept: 'application/vnd.github+json', 'user-agent': 'playbook-installer' };
+  if (token) headers.authorization = `Bearer ${token}`;
+
   try {
-    const res = await fetch(`https://api.github.com/repos/${slug}`, {
-      headers: { accept: 'application/vnd.github+json', 'user-agent': 'playbook-installer' },
-    });
-    if (!res.ok) return false;
-    const json = await res.json();
-    return json.private === false;
-  } catch {
-    return false;
+    const res = await fetch(`https://api.github.com${pathname}`, { headers });
+    if (res.ok) return { data: await res.json() };
+    if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') {
+      return { error: 'rate-limited' };
+    }
+    if (res.status === 404) return { error: 'not-found' };
+    return { error: `http-${res.status}` };
+  } catch (err) {
+    return { error: `network: ${err.message}` };
   }
 }
 
-/** Resolve a tag to the commit it points at, via the API. Annotated tags need a deref. */
+/** true | false | null (could not determine). */
+async function isPublicRepo(slug) {
+  if (!slug) return null;
+  const { data, error } = await ghApi(`/repos/${slug}`);
+  if (error) return null;
+  return data.private === false;
+}
+
+/** Resolve a tag to the commit it points at. Annotated tags need a second deref. */
 async function resolveTagSha(slug, tag) {
-  const get = async (url) => {
-    const res = await fetch(url, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'playbook-installer' } });
-    return res.ok ? res.json() : null;
-  };
-  const ref = await get(`https://api.github.com/repos/${slug}/git/ref/tags/${tag}`);
-  if (!ref || !ref.object) return null;
-  if (ref.object.type === 'commit') return ref.object.sha;
-  const deref = await get(`https://api.github.com/repos/${slug}/git/tags/${ref.object.sha}`);
-  return deref?.object?.sha || null;
+  const ref = await ghApi(`/repos/${slug}/git/ref/tags/${tag}`);
+  if (ref.error || !ref.data?.object) return { sha: null, error: ref.error || 'no-such-tag' };
+  if (ref.data.object.type === 'commit') return { sha: ref.data.object.sha };
+  const deref = await ghApi(`/repos/${slug}/git/tags/${ref.data.object.sha}`);
+  if (deref.error || !deref.data?.object) return { sha: null, error: deref.error || 'deref-failed' };
+  return { sha: deref.data.object.sha };
 }
 
 /**
@@ -110,8 +135,26 @@ async function inspectAction() {
   try { pkg = JSON.parse(fs.readFileSync(path.join(ACTION_ROOT, 'package.json'), 'utf8')); } catch { /* none */ }
   slug = slug || (/github\.com[:/]([^/]+\/[^/.]+)/.exec(pkg.repository?.url || '') || [])[1] || null;
   const tag = arg('ref', pkg.version ? `v${pkg.version}` : '');
-  const sha = slug && tag ? await resolveTagSha(slug, tag) : null;
-  return { slug, tag, sha, owner: slug ? slug.split('/')[0] : null };
+  const resolved = slug && tag ? await resolveTagSha(slug, tag) : { sha: null, error: 'no-slug' };
+  return { slug, tag, sha: resolved.sha, resolveError: resolved.error, owner: slug ? slug.split('/')[0] : null };
+}
+
+/** Turn an API failure into something the reader can act on. */
+function explainApi(error) {
+  if (error === 'rate-limited') {
+    return [
+      '  GitHub\'s unauthenticated API limit (60/hour per IP) is exhausted.',
+      c.dim('  Fix by any of:'),
+      c.dim('    gh auth login                 # the installer will use the gh CLI'),
+      c.dim('    export GH_TOKEN=<token>       # or a token from the environment'),
+      c.dim('    --ref v1.2.3                  # or wait for the limit to reset'),
+    ].join('\n');
+  }
+  if (error === 'not-found' || error === 'no-such-tag') {
+    return '  That repository or tag does not exist, or is private and this token cannot see it.';
+  }
+  if (error && error.startsWith('network')) return `  Network error reaching api.github.com — ${error}`;
+  return '  Pass --ref <tag>, or run the installer from a clone of the action.';
 }
 
 function buildWorkflow({ actionSlug, sha, tag, vendor, excludePaths }) {
@@ -169,8 +212,14 @@ async function main() {
 
   // Only a PRIVATE action fails to resolve across owners. A public one is fine as-is.
   const crossOwner = Boolean(action.owner && target.owner && action.owner !== target.owner);
-  const actionIsPublic = crossOwner ? await isPublicRepo(action.slug) : true;
-  const needsVendor = crossOwner && !actionIsPublic;
+  const visibility = crossOwner ? await isPublicRepo(action.slug) : true;
+  if (visibility === null && crossOwner && !has('vendor') && !has('no-vendor')) {
+    console.error(c.red('\n  Could not determine whether the action repo is public.'));
+    console.error(explainApi(action.resolveError));
+    console.error(c.dim('  Re-run with --vendor or --no-vendor to decide explicitly.\n'));
+    process.exit(1);
+  }
+  const needsVendor = crossOwner && visibility === false;
   const vendor = has('vendor') || (needsVendor && !has('no-vendor'));
   if (needsVendor && !has('vendor') && !has('no-vendor')) {
     console.log(c.yellow(`\n  ! The action is private and lives under "${action.owner}", this repo under "${target.owner}".`));
@@ -190,9 +239,8 @@ async function main() {
 
   // Never write a workflow that cannot resolve: an unpinned `uses:` is a broken install.
   if (!vendor && (!action.sha || !action.slug)) {
-    console.error(c.red('\n  Could not resolve a commit to pin.'));
-    console.error('  Pass --ref <tag> explicitly, or run the installer from a clone of the action.');
-    console.error(c.dim('  (Running via npx needs network access to resolve the release tag.)\n'));
+    console.error(c.red(`\n  Could not resolve a commit to pin${action.tag ? ` for ${action.tag}` : ''}.`));
+    console.error(explainApi(action.resolveError));
     process.exit(1);
   }
 
