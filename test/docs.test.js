@@ -143,6 +143,21 @@ test('docs: the example workflow is valid and matches what installation.md promi
   assert.ok(!/@v1\s*$/m.test(wf), 'the example must not pin a moving tag');
 });
 
+test('docs: the workflow template pins the action by SHA, matching its version label', () => {
+  const { execFileSync } = require('node:child_process');
+  const tpl = read('workflow-templates/playbook.yml');
+  const pins = [...tpl.matchAll(/@([0-9a-f]{40})\s*#\s*(v\d+\.\d+\.\d+)/g)];
+  assert.ok(pins.length >= 2, 'both uses: lines in the template must be SHA-pinned with a version label');
+  for (const [, sha, tag] of pins) {
+    let tagSha = null;
+    try { tagSha = execFileSync('git', ['rev-parse', `${tag}^{}`], { cwd: ROOT, encoding: 'utf8' }).trim(); } catch { /* gone */ }
+    assert.equal(tagSha, sha, `template pins ${sha.slice(0, 12)} as ${tag}, but ${tag} is ${tagSha ? tagSha.slice(0, 12) : '(missing)'}`);
+  }
+  const ourUses = [...tpl.matchAll(/uses:\s*akramabdulrahman\/playbook-changelog-action@(\S+)/g)].map((m) => m[1]);
+  assert.ok(ourUses.length >= 2, 'the template must reference the action on both jobs');
+  for (const ref of ourUses) assert.match(ref, /^[0-9a-f]{40}$/, `the action must be SHA-pinned, not "${ref}"`);
+});
+
 test('docs: a SHA labelled with a version tag really is that tag', () => {
   const { execFileSync } = require('node:child_process');
   const mismatches = [];

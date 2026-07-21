@@ -1,0 +1,7 @@
+{
+  "name": "Playbook & Changelog",
+  "description": "Preview each PR's documentation impact and apply playbook/changelog edits on merge.",
+  "iconName": "book",
+  "categories": ["Automation", "Documentation"],
+  "filePatterns": ["docs/playbook\\.md$", "docs/changelog\\.md$"]
+}

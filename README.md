@@ -33,6 +33,10 @@ The installer detects the repository, pins the latest release by commit SHA, wri
 workflow, and prints the remaining settings. `--dry-run` shows the changes without writing
 them.
 
+Prefer not to touch a terminal? The action can also be added entirely from the GitHub web
+UI — by creating the workflow file in the browser, or, for an organisation, as a one-click
+*Actions → New workflow* template. See [installing without a terminal](docs/installation.md#installing-without-a-terminal).
+
 For the end-to-end walkthrough — install, add an existing playbook, and the first-PR
 behaviour to expect — see the [Quickstart](docs/installation.md#quickstart). The manual,
 step-by-step equivalent is in the same [installation guide](docs/installation.md).

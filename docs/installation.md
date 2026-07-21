@@ -127,6 +127,27 @@ a client repository.
 
 </details>
 
+## Installing without a terminal
+
+The installer is a convenience, not a requirement — everything it does can be done from the
+GitHub web UI.
+
+**One repository, by hand.** Create `.github/workflows/playbook.yml` with *Add file →
+Create new file*, paste the contents of [`examples/playbook.yml`](../examples/playbook.yml),
+replace the two `uses:` lines with `akramabdulrahman/playbook-changelog-action@<sha>` (the
+SHA of the [latest release](https://github.com/akramabdulrahman/playbook-changelog-action/releases)), and commit. `docs/playbook.md` and
+`docs/changelog.md` are created automatically on the first merge.
+
+**Every repository in an organisation, one click.** Publish the files in
+[`workflow-templates/`](../workflow-templates/) into your organisation's `.github`
+repository — a one-time, in-browser step described in that directory's README. Afterwards,
+any repository in the organisation gets a **Playbook & Changelog** entry under *Actions →
+New workflow* that creates the workflow file in the browser. This is the closest thing to
+"add it without leaving GitHub", and the right choice for rolling it across many repos.
+
+Neither path needs the terminal. The installer below simply automates the first one and
+pins the SHA for you.
+
 ## The quick way: the installer
 
 Run this inside the repo you want to install into — no clone, no global install:
