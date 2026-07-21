@@ -1,10 +1,49 @@
 # Installation
 
-Adding this to a repository is one workflow file and two repository variables. There is
-nothing to install locally, no `docs/` files to create, and no API key in the common case.
+Adding this to a repository is one workflow file and two repository variables. In the common case there is
+nothing to install locally and no API key; an existing `docs/playbook.md` is used as-is,
+or one is created from a template on first run.
 
 **Time:** about five minutes.
 **Result:** every PR previews its documentation impact; every merge applies it.
+
+---
+
+## Quickstart
+
+The whole flow, for a repository that already has a `docs/playbook.md` (or any markdown file
+to use as one). The step-by-step sections below expand on each part.
+
+```bash
+# 1. Install the workflow on a branch
+cd /path/to/your-repo
+git checkout -b ci/playbook
+npx github:akramabdulrahman/playbook-changelog-action playbook-install
+
+# 2. Add your playbook (left exactly as-is; the action reads its headings as the contract)
+mkdir -p docs
+cp /path/to/your-playbook.md docs/playbook.md      # skip if docs/playbook.md already exists
+
+# 3. Commit and open the install PR
+git add .github/workflows/playbook.yml docs/playbook.md
+git commit -m "ci: self-maintaining playbook and changelog"
+git push -u origin ci/playbook
+gh pr create --fill && gh pr merge --merge
+```
+
+Then, once (repository settings):
+
+- *Settings → Actions → General → Workflow permissions* → **Read and write**.
+- The provider defaults to GitHub Models, so no key and no variable are needed for the
+  common case; the `models: read` permission is already in the workflow.
+
+> **The install PR shows no preview comment — this is expected.** A workflow only triggers
+> on pull requests once it exists on the default branch, and on the PR that *adds* it, it
+> does not yet. Merge the install PR anyway. Your **next** pull request is the first one the
+> action sees: it posts the preview, and merging it writes the entry.
+
+`docs/changelog.md` does not need to be added by hand — it is created from a template on the
+first merge that produces an entry.
 
 ---
 
@@ -117,7 +156,9 @@ Find the commit SHA for a release with:
 git rev-parse v1.1.0^{}   # note the ^{} — without it you get the tag object, not the commit
 ```
 
-Commit the workflow to your default branch. It has to exist there before it will run on PRs.
+Commit the workflow to your default branch. It has to exist there before it runs on any pull
+request — so the PR that *adds* it produces no preview comment. That is expected (see the
+Quickstart note above); the first PR opened *after* the merge is the one the action previews.
 
 ## Step 4 — Open a test PR
 

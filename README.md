@@ -31,7 +31,11 @@ npx github:akramabdulrahman/playbook-changelog-action playbook-install
 
 The installer detects the repository, pins the latest release by commit SHA, writes the
 workflow, and prints the remaining settings. `--dry-run` shows the changes without writing
-them. See [installation](docs/installation.md) for the manual equivalent.
+them.
+
+For the end-to-end walkthrough — install, add an existing playbook, and the first-PR
+behaviour to expect — see the [Quickstart](docs/installation.md#quickstart). The manual,
+step-by-step equivalent is in the same [installation guide](docs/installation.md).
 
 ## Model providers
 
