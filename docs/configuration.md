@@ -7,25 +7,44 @@ intended setup for an internal repo.
 
 ## Inputs
 
-### Model
+### Model provider
 
 | Input | Default | Notes |
 | --- | --- | --- |
 | `llm_provider` | `mock` | `github` · `anthropic` · `openai` · `mock` |
-| `llm_model` | per provider | `openai/gpt-4o-mini` (github), `gpt-4o-mini` (openai), `claude-haiku-4-5-20251001` (anthropic) |
+| `llm_model` | per provider | see the table below |
 | `anthropic_api_key` | — | required only for `anthropic` |
 | `openai_api_key` | — | required only for `openai` |
 
-The action's own default is `mock` so it can never make an external call by accident. The
-supplied workflow sets `github` explicitly — that is the intended production setting.
+The action's own default is `mock`, so it cannot make an external call by accident. The
+supplied workflow sets `github` explicitly; that is the intended production setting.
 
-- **`github`** — GitHub Models, authenticated with the job's `GITHUB_TOKEN`. Needs
-  `models: read` in the job's `permissions`. No API key, no new contracting party.
-- **`mock`** — deterministic keyword routing, no network. For trying the plumbing or CI.
-  Not a model; never ship it as a real config.
+| `llm_provider` | Endpoint | Default `llm_model` | Credential | Job permission |
+| --- | --- | --- | --- | --- |
+| `github` | GitHub Models | `openai/gpt-4o-mini` | the job's `GITHUB_TOKEN` | `models: read` |
+| `anthropic` | `api.anthropic.com` | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` | — |
+| `openai` | `api.openai.com` | `gpt-4o-mini` | `OPENAI_API_KEY` | — |
+| `mock` | none | — | — | — |
 
-If a model call fails, returns junk, or no key is set, the run degrades to a changelog-only
-entry and says so in the comment. It does not fail your PR.
+**GitHub Models (`github`)** is OpenAI-compatible and authenticates with the workflow's own
+token. No API key is stored in the repository, and no processor is introduced beyond GitHub.
+Model IDs are namespaced by publisher, e.g. `openai/gpt-4o-mini`.
+
+**Anthropic (`anthropic`)** accepts any current Claude model ID. `claude-haiku-4-5` is the
+default because the task is a small structured classification; `claude-opus-4-8` and
+`claude-sonnet-5` also work and are configured the same way. Sampling parameters were
+removed on Opus 4.7/4.8, Sonnet 5 and Fable 5, so the action omits `temperature` for those
+models and sends it for the ones that accept it — no configuration is needed either way.
+
+**OpenAI (`openai`)** accepts any chat-completions model and is requested with
+`response_format: json_object`.
+
+**`mock`** routes sections by keyword regex and makes no network call. It is intended for
+CI and for exercising the workflow before a provider is chosen. It is not a model and
+should not be used as a production setting.
+
+A failed call — bad key, quota exhausted, malformed response — degrades to a changelog-only
+entry and is reported in the comment. It does not fail the pull request.
 
 ### What data leaves the runner
 

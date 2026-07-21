@@ -63,9 +63,20 @@ test('docs: configuration.md documents every action input', () => {
 test('docs: configuration.md invents no inputs', () => {
   const config = read('docs/configuration.md');
   const inputsSection = config.split('## Outputs')[0];
-  const tableInputs = [...inputsSection.matchAll(/^\| `([a-z_]+)` \|/gm)].map((m) => m[1]);
+  // Only tables whose header column is "Input" list action inputs; the page also holds
+  // provider and CLI-flag tables whose first column is a value, not an input name.
+  const tableInputs = [];
+  let inInputTable = false;
+  for (const line of inputsSection.split('\n')) {
+    if (/^\|\s*Input\s*\|/.test(line)) { inInputTable = true; continue; }
+    if (/^\|\s*[A-Z]/.test(line)) { inInputTable = false; continue; }
+    if (!line.startsWith('|')) { inInputTable = false; continue; }
+    const m = /^\| `([a-z_]+)` \|/.exec(line);
+    if (inInputTable && m) tableInputs.push(m[1]);
+  }
   const invented = tableInputs.filter((i) => !declaredInputs.includes(i));
   assert.deepEqual(invented, [], `documented but not in action.yml: ${invented.join(', ')}`);
+  assert.ok(tableInputs.length >= 10, `expected the input tables to be found, got ${tableInputs.length}`);
 });
 
 test('docs: documented defaults match action.yml', () => {

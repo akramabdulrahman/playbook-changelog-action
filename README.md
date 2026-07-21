@@ -1,93 +1,96 @@
 # playbook-changelog-action
 
-Self-maintaining `docs/playbook.md` and `docs/changelog.md`. Every PR previews its
-documentation impact as a sticky comment; every merge applies it. Nobody runs a script.
+A GitHub Action that keeps `docs/playbook.md` and `docs/changelog.md` current. Each pull
+request receives a comment previewing the documentation it would add; merging applies it.
 
 ```
-PR opened  ──▶  📓 preview comment   (writes nothing)
-PR merged  ──▶  docs commit pushed   ([skip ci])
-you decide ──▶  make-release.js      (rolls the changelog into a dated file)
+PR opened  ──▶  preview comment    (nothing is written)
+PR merged  ──▶  docs commit        (pushed with [skip ci])
+on demand  ──▶  make-release.js    (rolls the changelog into a release)
 ```
-
----
 
 ## Documentation
 
 | | |
 | --- | --- |
-| **[Installation](docs/installation.md)** | Five-minute setup: one workflow file, two variables |
-| **[Usage](docs/usage.md)** | What happens on each event, writing PRs that produce good docs, cutting releases |
-| **[Configuration](docs/configuration.md)** | Every input, with the setups worth copying |
+| **[Installation](docs/installation.md)** | Setup: one workflow file and two repository variables |
+| **[Usage](docs/usage.md)** | Behaviour per event, writing PRs, cutting releases |
+| **[Configuration](docs/configuration.md)** | Every input, with worked examples |
 | **[Troubleshooting](docs/troubleshooting.md)** | Symptoms, causes, fixes |
-| **[GDPR notes](docs/gdpr.md)** | What leaves the runner, and the questions a DPO will ask |
-| **[Changelog](CHANGELOG.md)** | Releases. Pin a commit SHA, not `@v1`. |
+| **[GDPR notes](docs/gdpr.md)** | What leaves the runner, and under whose agreement |
+| **[Changelog](CHANGELOG.md)** | Releases. Pin a commit SHA rather than a tag. |
 
 ## Install
 
-From inside the repository you want to install into:
+Run inside the repository to be configured:
 
 ```bash
 npx github:akramabdulrahman/playbook-changelog-action playbook-install
 ```
 
-It pins the newest release by commit SHA, writes the workflow, and prints the two settings
-you need to change. `--dry-run` first if you prefer. Full walkthrough:
-[docs/installation.md](docs/installation.md).
+The installer detects the repository, pins the latest release by commit SHA, writes the
+workflow, and prints the remaining settings. `--dry-run` shows the changes without writing
+them. See [installation](docs/installation.md) for the manual equivalent.
 
-## Install, in short
+## Model providers
 
-```yaml
-# .github/workflows/playbook.yml — see examples/playbook.yml for the full file
-- uses: actions/checkout@v4
-  with: { fetch-depth: 0 }
-- uses: akramabdulrahman/playbook-changelog-action@1d090cefa47004db0a8ff4caacaf0029c6f5d02b # v1.0.4
-  with:
-    llm_provider: github     # GitHub Models — no API key needed
-    data_scope: metadata     # no file contents leave the runner
-```
+Three providers are supported. All three answer the same structured question and produce
+the same kind of result; they differ in who processes the data and what credentials are
+required.
 
-Set repository **variable** `LLM_PROVIDER=github`, give the job `models: read`, and allow
-Actions to write. That is the whole install — `docs/playbook.md` and `docs/changelog.md` are
-created from templates on the first merge.
+| Provider | `llm_provider` | Default model | Credential |
+| --- | --- | --- | --- |
+| **GitHub Models** | `github` | `openai/gpt-4o-mini` | none — uses the job's `GITHUB_TOKEN` |
+| **Anthropic (Claude)** | `anthropic` | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` |
+| **OpenAI** | `openai` | `gpt-4o-mini` | `OPENAI_API_KEY` |
+
+A fourth value, `mock`, resolves sections by keyword and makes no network call. It exists
+for tests and for trying the workflow without a provider; it is not a model.
+
+**GitHub Models is the default.** It requires `models: read` on the job, introduces no
+processor beyond GitHub, and needs no API key — so there is no key to leak. The other two
+providers accept any model their API exposes via `llm_model`; for Anthropic that includes
+`claude-opus-4-8` and `claude-sonnet-5` alongside the Haiku default.
+
+Whichever provider runs, a failed call degrades to a changelog entry and reports the
+failure in the comment rather than failing the pull request.
 
 ## How it works
 
-The model is never asked to rewrite the playbook. It receives the current playbook, the
-list of its exact headings, and a compact description of the change, then answers one small
-JSON question: is this a durable fact, is it already documented, which existing heading does
-it belong under, and what single sentence should be added. The scripts do the markdown
-surgery deterministically — insert, dedupe, replace placeholder.
+The model does not rewrite the playbook. It receives the current playbook, the list of its
+headings, and a compact description of the change, then answers one structured question:
+whether the change records a durable fact, whether that fact is already documented, which
+existing heading it belongs under, and what single sentence to add. The scripts perform the
+markdown edit deterministically.
 
-That keeps it cheap (a few hundred to ~2k input tokens per PR on a small model) and keeps
-the file structure under code control rather than model discretion.
+This keeps cost low — a few hundred to roughly two thousand input tokens per pull request
+on a small model — and keeps document structure under code control rather than model
+discretion.
 
-**Design commitments**, each enforced by tests:
+Four properties hold, each covered by tests:
 
-- **Your file is the contract.** An existing `docs/playbook.md` is never overwritten, and a
-  heading the file does not define is refused rather than created.
+- **The existing file is authoritative.** An existing `docs/playbook.md` is never
+  overwritten, and a heading the file does not define is refused rather than created.
 - **Edits are surgical.** Single lines are spliced in; spacing, trailing whitespace and
-  `<details>` markup are preserved. A merge commit reads `2 files changed, 2 insertions(+)`.
-- **The preview is binding.** The decision shown in the comment is replayed on merge, so
-  the commit cannot disagree with what you were shown.
-- **Data is bounded.** Metadata only by default, redacted, with path exclusions.
-- **Nothing blocks a merge.** Model failures degrade to a changelog entry and say so.
+  collapsible `<details>` markup are preserved. A merge commit reads
+  `2 files changed, 2 insertions(+)`.
+- **The preview is binding.** The decision shown in the comment is stored in it and
+  replayed on merge, so the commit matches what was displayed.
+- **Outbound data is bounded.** Metadata only by default, redacted, with path exclusions.
 
 ## Development
 
 ```bash
-node --test test/unit.test.js   # 56 tests
-test/simulate.sh mock           # full PR loop against a local bare repo, no network
+node --test test/unit.test.js test/docs.test.js
+test/simulate.sh mock
 ```
 
-`simulate.sh` builds a throwaway repo, opens and merges PRs, replays an event to prove
-idempotency, exercises the video suggestion and cuts a release.
+`simulate.sh` builds a temporary repository, opens and merges pull requests, replays an
+event to confirm idempotency, exercises the video suggestion, and cuts a release.
 
-## Known limits
+## Limitations
 
-- The `anthropic` provider path is implemented but has never been exercised against the
-  live API.
-- Cross-repo `uses:` needs the action repo to be public or org-shared; a private action repo
-  on a personal account cannot be consumed by other repos. See
-  [installation](docs/installation.md#appendix-private-action-repos).
-- Playbooks accrete. The action flags near-duplicates and crowded sections, but expect to
-  read and compact the file every few months.
+- The `anthropic` provider is implemented and unit-tested but has not been exercised
+  against the live API.
+- Playbooks accumulate entries. The action flags near-duplicates and crowded sections;
+  periodic manual compaction is still expected.

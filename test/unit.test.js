@@ -348,12 +348,33 @@ test('surgical: plain bullet lists still append directly after the last item', (
   assert.equal(out, '## Alpha\n\n- one\n- two\n- three\n\ntail\n');
 });
 
-test('llm: both providers pin temperature so preview and apply agree', () => {
+test('llm: providers pin temperature so preview and apply agree', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'lib', 'llm.js'), 'utf8');
-  const anthropic = src.split('function callAnthropic')[1].split('function callOpenAI')[0];
-  const openai = src.split('function callOpenAI')[1].split('function callMock')[0];
-  assert.match(anthropic, /temperature:\s*0\b/, 'anthropic call must pin temperature');
-  assert.match(openai, /temperature:\s*0\b/, 'openai call must pin temperature');
+  const anthropic = src.split('async function callAnthropic')[1].split('async function callOpenAICompatible')[0];
+  const openaiCompatible = src.split('async function callOpenAICompatible')[1].split('const callOpenAI')[0];
+  assert.match(anthropic, /body\.temperature = 0/, 'anthropic pins temperature where the model accepts it');
+  assert.match(openaiCompatible, /temperature:\s*0\b/, 'openai-compatible call must pin temperature');
+});
+
+test('llm: sampling params are omitted on Claude models that reject them', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'lib', 'llm.js'), 'utf8');
+  const re = /^claude-\(opus-4-\[78\]\|sonnet-5\|fable-5\|mythos-5\)/;
+  assert.match(src, /NO_SAMPLING_PARAMS/, 'must know which models reject sampling');
+  const pattern = /const NO_SAMPLING_PARAMS = (\/[^/]+\/)/.exec(src);
+  assert.ok(pattern, 'NO_SAMPLING_PARAMS must be a regex');
+  const rx = new RegExp(pattern[1].slice(1, -1));
+  for (const m of ['claude-opus-4-8', 'claude-opus-4-7', 'claude-sonnet-5', 'claude-fable-5']) {
+    assert.ok(rx.test(m), `${m} rejects sampling parameters and must be matched`);
+  }
+  for (const m of ['claude-haiku-4-5', 'claude-sonnet-4-6', 'claude-opus-4-6']) {
+    assert.ok(!rx.test(m), `${m} accepts sampling parameters and must not be matched`);
+  }
+});
+
+test('llm: a sampling-parameter 400 retries once without them', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'lib', 'llm.js'), 'utf8');
+  assert.match(src, /withSampling: false/, 'must retry without sampling rather than fail');
+  assert.match(src, /temperature\|top_p\|top_k/, 'must detect the specific 400');
 });
 
 // --------------------------------------------------------------- hardening

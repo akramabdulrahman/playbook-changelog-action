@@ -8,7 +8,7 @@ inputs:
     required: false
     default: 'mock'
   llm_model:
-    description: 'Model id. Defaults per provider (github: openai/gpt-4o-mini, anthropic: claude-haiku-4-5-20251001, openai: gpt-4o-mini).'
+    description: 'Model id. Defaults per provider (github: openai/gpt-4o-mini, anthropic: claude-haiku-4-5, openai: gpt-4o-mini).'
     required: false
     default: ''
   anthropic_api_key:

@@ -1,6 +1,6 @@
 # Usage
 
-Day-to-day, nobody runs anything. The docs update as a side effect of merging.
+No command is run day to day. The documents update as a side effect of merging.
 
 ---
 
@@ -34,8 +34,7 @@ Applied automatically when this PR merges. model: `openai/gpt-4o-mini` ·
 data sent: metadata only (no file contents) · tokens: 1952 in / 50 out
 ```
 
-The footer is worth reading: it tells you which model ran, **what data left the runner**,
-and what it cost.
+The footer records which model ran, **what data left the runner**, and the token cost.
 
 The comment also carries the decision in a hidden marker. On merge that decision is
 **replayed** rather than recomputed, so the commit cannot disagree with what you were shown.
@@ -43,8 +42,8 @@ Pushing a new commit invalidates it and a fresh preview is computed.
 
 ## Writing PRs that produce good docs
 
-The model sees your PR **title, description, commit subjects and changed file paths** — by
-default, not the code. What you write is the input.
+The model receives the pull request **title, description, commit subjects and changed file
+paths** — by default not the code itself. The prose in the pull request is the input.
 
 **Good** — states the durable fact and its consequence:
 

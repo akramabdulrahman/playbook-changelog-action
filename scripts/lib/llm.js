@@ -2,8 +2,15 @@
 
 const { fetchWithRetry } = require('./http');
 
+/**
+ * Sampling parameters (temperature/top_p/top_k) were removed on these Claude models and
+ * are rejected with a 400. Everything older still accepts them, and temperature 0 is what
+ * keeps preview and apply in agreement — so it is sent only where it is legal.
+ */
+const NO_SAMPLING_PARAMS = /^claude-(opus-4-[78]|sonnet-5|fable-5|mythos-5)/;
+
 const DEFAULT_MODELS = {
-  anthropic: 'claude-haiku-4-5-20251001',
+  anthropic: 'claude-haiku-4-5',
   openai: 'gpt-4o-mini',
   // GitHub Models is OpenAI-compatible and authenticates with the workflow's own
   // GITHUB_TOKEN, so no new vendor and no new secret enter the repo.
@@ -81,7 +88,17 @@ function parseDecision(raw) {
   };
 }
 
-async function callAnthropic({ apiKey, model, system, user }) {
+async function callAnthropic({ apiKey, model, system, user, withSampling = !NO_SAMPLING_PARAMS.test(model) }) {
+  const body = {
+    model,
+    max_tokens: 400,
+    system,
+    messages: [{ role: 'user', content: user }],
+  };
+  // Preview and apply are separate calls on the same input; sampling would let them
+  // disagree, so the comment could promise an edit the merge does not make.
+  if (withSampling) body.temperature = 0;
+
   const res = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -89,17 +106,20 @@ async function callAnthropic({ apiKey, model, system, user }) {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: 400,
-      // Preview and apply are separate calls on the same input; sampling would let them
-      // disagree, so the comment could promise an edit the merge does not make.
-      temperature: 0,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
+    body: JSON.stringify(body),
   }, { onRetry: (r) => console.log(`::notice::anthropic retry ${r.attempt + 1}: ${r.status || r.error}, waiting ${r.wait}ms`) });
-  if (!res.ok) throw new Error(`anthropic ${res.status}: ${await res.text()}`);
+
+  if (!res.ok) {
+    const detail = await res.text();
+    // A model newer than this allow-list also rejects sampling: retry once without it
+    // rather than failing on a model that would otherwise work.
+    if (res.status === 400 && withSampling && /temperature|top_p|top_k/i.test(detail)) {
+      console.log('::notice::anthropic rejected sampling parameters; retrying without them.');
+      return callAnthropic({ apiKey, model, system, user, withSampling: false });
+    }
+    throw new Error(`anthropic ${res.status}: ${detail}`);
+  }
+
   const json = await res.json();
   const text = (json.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   return { text, usage: json.usage || {} };
