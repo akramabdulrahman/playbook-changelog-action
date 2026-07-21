@@ -30,6 +30,17 @@ supplied workflow sets `github` explicitly; that is the intended production sett
 token. No API key is stored in the repository, and no processor is introduced beyond GitHub.
 Model IDs are namespaced by publisher, e.g. `openai/gpt-4o-mini`.
 
+*Cost and quota.* GitHub Models billing is **separate from GitHub Copilot** — a Copilot
+subscription is neither required nor consumed. Usage authenticates as the repository via
+`GITHUB_TOKEN`, so it draws on the GitHub Models allowance of the account that owns the repo
+(the organisation, for an org repo). Every account has a free, rate-limited allowance; this
+action's requests are small (a few hundred to roughly two thousand input tokens per pull
+request), so ordinary volume stays within it. When the free allowance is exhausted GitHub
+**blocks** further usage rather than billing it, and paid usage is **disabled by default for
+organisations** — someone with billing rights must opt in before any charge is possible. A
+blocked call is non-fatal here: the run degrades to a changelog-only entry and reports it in
+the comment.
+
 **Anthropic (`anthropic`)** accepts any current Claude model ID. `claude-haiku-4-5` is the
 default because the task is a small structured classification; `claude-opus-4-8` and
 `claude-sonnet-5` also work and are configured the same way. Sampling parameters were
