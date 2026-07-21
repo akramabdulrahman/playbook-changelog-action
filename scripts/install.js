@@ -57,18 +57,45 @@ function inspectTarget() {
   return { root, slug, defaultBranch, owner: slug ? slug.split('/')[0] : null };
 }
 
-/** Where the action itself lives, and the commit to pin. */
-function inspectAction() {
-  const remote = sh('git', ['remote', 'get-url', 'origin'], { cwd: ACTION_ROOT }) || '';
-  const slug = (/github\.com[:/]([^/]+\/[^/.]+)/.exec(remote) || [])[1] || null;
+/** Resolve a tag to the commit it points at, via the API. Annotated tags need a deref. */
+async function resolveTagSha(slug, tag) {
+  const get = async (url) => {
+    const res = await fetch(url, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'playbook-installer' } });
+    return res.ok ? res.json() : null;
+  };
+  const ref = await get(`https://api.github.com/repos/${slug}/git/ref/tags/${tag}`);
+  if (!ref || !ref.object) return null;
+  if (ref.object.type === 'commit') return ref.object.sha;
+  const deref = await get(`https://api.github.com/repos/${slug}/git/tags/${ref.object.sha}`);
+  return deref?.object?.sha || null;
+}
 
-  // Latest semver tag, resolved to a commit (^{} — an annotated tag is not a commit).
-  const tags = (sh('git', ['tag', '--list', 'v[0-9]*.[0-9]*.[0-9]*', '--sort=-v:refname'], { cwd: ACTION_ROOT }) || '')
-    .split('\n').filter(Boolean);
-  const tag = arg('ref', tags[0] || '');
-  const sha = tag
-    ? sh('git', ['rev-parse', `${tag}^{}`], { cwd: ACTION_ROOT })
-    : sh('git', ['rev-parse', 'HEAD'], { cwd: ACTION_ROOT });
+/**
+ * Where the action itself lives, and the commit to pin.
+ * Two cases: run from a git clone (read git), or run via npx, where npm strips .git —
+ * then the slug and version come from package.json and the SHA from the API.
+ */
+async function inspectAction() {
+  const remote = sh('git', ['remote', 'get-url', 'origin'], { cwd: ACTION_ROOT }) || '';
+  let slug = (/github\.com[:/]([^/]+\/[^/.]+)/.exec(remote) || [])[1] || null;
+
+  if (slug) {
+    // Latest semver tag, resolved to a commit (^{} — an annotated tag is not a commit).
+    const tags = (sh('git', ['tag', '--list', 'v[0-9]*.[0-9]*.[0-9]*', '--sort=-v:refname'], { cwd: ACTION_ROOT }) || '')
+      .split('\n').filter(Boolean);
+    const tag = arg('ref', tags[0] || '');
+    const sha = tag
+      ? sh('git', ['rev-parse', `${tag}^{}`], { cwd: ACTION_ROOT })
+      : sh('git', ['rev-parse', 'HEAD'], { cwd: ACTION_ROOT });
+    if (sha) return { slug, tag, sha, owner: slug.split('/')[0] };
+  }
+
+  // npx / npm install: no git metadata.
+  let pkg = {};
+  try { pkg = JSON.parse(fs.readFileSync(path.join(ACTION_ROOT, 'package.json'), 'utf8')); } catch { /* none */ }
+  slug = slug || (/github\.com[:/]([^/]+\/[^/.]+)/.exec(pkg.repository?.url || '') || [])[1] || null;
+  const tag = arg('ref', pkg.version ? `v${pkg.version}` : '');
+  const sha = slug && tag ? await resolveTagSha(slug, tag) : null;
   return { slug, tag, sha, owner: slug ? slug.split('/')[0] : null };
 }
 
@@ -114,10 +141,10 @@ function existingPin(workflow) {
   return null;
 }
 
-function main() {
+async function main() {
   const dryRun = has('dry-run');
   const target = inspectTarget();
-  const action = inspectAction();
+  const action = await inspectAction();
 
   console.log(c.bold('\nplaybook-changelog-action installer\n'));
   console.log(`  repository       ${target.slug || target.root}`);
@@ -142,6 +169,14 @@ function main() {
     console.log(c.yellow(`\n  Already installed (${pinned.vendored ? 'vendored' : pinned.sha.slice(0, 12)}).`));
     console.log('  Re-run with --upgrade to re-pin to the latest release, or --force to overwrite.\n');
     return;
+  }
+
+  // Never write a workflow that cannot resolve: an unpinned `uses:` is a broken install.
+  if (!vendor && (!action.sha || !action.slug)) {
+    console.error(c.red('\n  Could not resolve a commit to pin.'));
+    console.error('  Pass --ref <tag> explicitly, or run the installer from a clone of the action.');
+    console.error(c.dim('  (Running via npx needs network access to resolve the release tag.)\n'));
+    process.exit(1);
   }
 
   const workflow = buildWorkflow({
@@ -188,6 +223,6 @@ function main() {
   console.log(`\n  ${c.green('Docs:')} ${action.slug ? `https://github.com/${action.slug}/blob/main/docs/installation.md` : 'docs/installation.md'}\n`);
 }
 
-if (require.main === module) main();
+if (require.main === module) main().catch((err) => { console.error(c.red(err.message)); process.exit(1); });
 
 module.exports = { buildWorkflow, existingPin, inspectAction, inspectTarget };

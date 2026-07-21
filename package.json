@@ -1,6 +1,6 @@
 {
   "name": "playbook-changelog-action",
-  "version": "1.0.3",
+  "version": "1.0.0",
   "description": "Self-maintaining playbook and changelog: every PR previews its documentation impact, every merge applies it.",
   "bin": {
     "playbook-install": "scripts/install.js"
@@ -9,7 +9,19 @@
     "test": "node --test test/unit.test.js test/docs.test.js",
     "test:e2e": "test/simulate.sh mock"
   },
-  "files": ["action.yml", "scripts", "templates", "examples", "docs"],
+  "files": [
+    "action.yml",
+    "scripts",
+    "templates",
+    "examples",
+    "docs"
+  ],
   "license": "MIT",
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akramabdulrahman/playbook-changelog-action-public.git"
+  }
 }

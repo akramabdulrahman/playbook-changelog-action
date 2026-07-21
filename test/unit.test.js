@@ -643,3 +643,16 @@ test('issue ref: with no issue in the title the PR number is used', async () => 
   const plan = await planEdits({ ctx, docsDir: dir, provider: 'mock', maxPlaybookChars: 16000 });
   assert.match(plan.changelog.entry, /\(#1001\)$/);
 });
+
+test('installer: refuses to write a workflow it cannot pin', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'install.js'), 'utf8');
+  assert.match(src, /Could not resolve a commit to pin/, 'must bail rather than emit @null');
+  assert.match(src, /!vendor && \(!action\.sha \|\| !action\.slug\)/, 'guard must run before writing');
+});
+
+test('installer: package.json exposes the repo so npx can resolve a tag', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  assert.match(pkg.repository?.url || '', /github\.com/, 'repository.url is how the npx path finds the slug');
+  assert.ok(pkg.version, 'version becomes the tag looked up via the API');
+  assert.equal(pkg.bin['playbook-install'], 'scripts/install.js');
+});
