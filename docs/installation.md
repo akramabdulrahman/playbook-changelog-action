@@ -68,7 +68,7 @@ on a client repository.
 Run this inside the repo you want to install into — no clone, no global install:
 
 ```bash
-npx github:OWNER/REPO playbook-install
+npx github:akramabdulrahman/playbook-changelog-action-public playbook-install
 ```
 
 Or from a local clone of the action:
@@ -101,7 +101,7 @@ Copy [`examples/playbook.yml`](../examples/playbook.yml) to `.github/workflows/p
 and replace the two `uses:` lines with your action repo and a **commit SHA**:
 
 ```yaml
-- uses: OWNER/playbook-changelog-action@acf1a73fa0a4397f06aefe991c9786d037907f5a # v1.0.2
+- uses: akramabdulrahman/playbook-changelog-action-public@258bc2c56872bef56c2c55da54115e8eec008f4b # v1.0.0
 ```
 
 **Pin the SHA, not `@v1`.** `v1` is a moving pointer: whoever owns the action can repoint
@@ -111,7 +111,7 @@ immutable. Update it deliberately, reading [CHANGELOG.md](../CHANGELOG.md) as yo
 Find the commit SHA for a release with:
 
 ```bash
-git rev-parse v1.0.2^{}   # note the ^{} — without it you get the tag object, not the commit
+git rev-parse v1.0.0^{}   # note the ^{} — without it you get the tag object, not the commit
 ```
 
 Commit the workflow to your default branch. It has to exist there before it will run on PRs.
