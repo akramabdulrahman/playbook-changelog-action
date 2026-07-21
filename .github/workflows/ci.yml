@@ -4,7 +4,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 pulls full history AND all tags. The docs drift tests resolve
+      # `git rev-parse vX.Y.Z^{}` to check documented SHAs match their version labels;
+      # a shallow, tagless checkout makes those tags unresolvable and the tests fail.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: node --test test/unit.test.js test/docs.test.js
