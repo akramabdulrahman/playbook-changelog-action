@@ -27,7 +27,7 @@ you decide ──▶  make-release.js      (rolls the changelog into a dated fil
 From inside the repository you want to install into:
 
 ```bash
-npx github:akramabdulrahman/playbook-changelog-action-public playbook-install
+npx github:akramabdulrahman/playbook-changelog-action playbook-install
 ```
 
 It pins the newest release by commit SHA, writes the workflow, and prints the two settings
@@ -40,7 +40,7 @@ you need to change. `--dry-run` first if you prefer. Full walkthrough:
 # .github/workflows/playbook.yml — see examples/playbook.yml for the full file
 - uses: actions/checkout@v4
   with: { fetch-depth: 0 }
-- uses: akramabdulrahman/playbook-changelog-action-public@258bc2c56872bef56c2c55da54115e8eec008f4b # v1.0.0
+- uses: akramabdulrahman/playbook-changelog-action@258bc2c56872bef56c2c55da54115e8eec008f4b # v1.0.0
   with:
     llm_provider: github     # GitHub Models — no API key needed
     data_scope: metadata     # no file contents leave the runner

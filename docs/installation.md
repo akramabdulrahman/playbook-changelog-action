@@ -68,7 +68,7 @@ on a client repository.
 Run this inside the repo you want to install into — no clone, no global install:
 
 ```bash
-npx github:akramabdulrahman/playbook-changelog-action-public playbook-install
+npx github:akramabdulrahman/playbook-changelog-action playbook-install
 ```
 
 Or from a local clone of the action:
@@ -101,7 +101,7 @@ Copy [`examples/playbook.yml`](../examples/playbook.yml) to `.github/workflows/p
 and replace the two `uses:` lines with your action repo and a **commit SHA**:
 
 ```yaml
-- uses: akramabdulrahman/playbook-changelog-action-public@258bc2c56872bef56c2c55da54115e8eec008f4b # v1.0.0
+- uses: akramabdulrahman/playbook-changelog-action@258bc2c56872bef56c2c55da54115e8eec008f4b # v1.0.0
 ```
 
 **Pin the SHA, not `@v1`.** `v1` is a moving pointer: whoever owns the action can repoint
