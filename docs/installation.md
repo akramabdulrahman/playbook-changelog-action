@@ -31,11 +31,14 @@ git push -u origin ci/playbook
 gh pr create --fill && gh pr merge --merge
 ```
 
-Then, once (repository settings):
+Settings, in the common case: **none.** The workflow declares its own permissions
+(`contents: write` on the merge job, `models: read` on both), which GitHub honours even when
+the repository default is read-only — so there is nothing to toggle. The provider defaults
+to GitHub Models, so no key or variable is needed either.
 
-- *Settings → Actions → General → Workflow permissions* → **Read and write**.
-- The provider defaults to GitHub Models, so no key and no variable are needed for the
-  common case; the `models: read` permission is already in the workflow.
+Two situations do require a setting, covered below: an organisation that *enforces* a
+restrictive token policy ([Step 1](#step-1--permissions-what-you-usually-do-not-need)), and
+`apply_mode: pr` on a protected branch ([Step 5](#step-5--protected-branches)).
 
 > **The install PR shows no preview comment — this is expected.** A workflow only triggers
 > on pull requests once it exists on the default branch, and on the PR that *adds* it, it
@@ -63,17 +66,22 @@ which authenticates with the workflow's own token.
 
 ---
 
-## Step 1 — Allow the workflow to write
+## Step 1 — Permissions (what you usually do *not* need)
 
-*Settings → Actions → General → Workflow permissions*
+The workflow the installer writes declares its own token permissions per job — `contents:
+write` on the merge job, `pull-requests: write` and `models: read` on both. GitHub honours a
+workflow's explicit `permissions:` block **even when the repository default is read-only**,
+because that default only applies to workflows that declare nothing. So in the common case
+there is nothing to change here.
 
-Select **Read and write permissions**.
+Flip *Settings → Actions → General → Workflow permissions* to **Read and write** only if the
+merge job fails with a `403` on push — which happens when an **organisation or enterprise
+policy** caps the token below what the workflow requests. On a normal repository it is not
+needed.
 
-The merge job commits the updated docs back to the branch you merged into. Without this it
-will fail with a `403` on push.
-
-> If you plan to use `apply_mode: pr` (see [Protected branches](#step-5--protected-branches)),
-> also tick **Allow GitHub Actions to create and approve pull requests** in the same panel.
+> `apply_mode: pr` is different: creating a pull request needs *Allow GitHub Actions to
+> create and approve pull requests* in the same panel, and no workflow `permissions:` block
+> can substitute for it. See [Protected branches](#step-5--protected-branches).
 
 ## Step 2 — Set the provider
 

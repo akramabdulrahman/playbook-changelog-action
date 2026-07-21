@@ -98,12 +98,15 @@ video_hosts: 'videos.acme.internal loom.com'   # listing replaces the defaults e
 | Input | Default | Notes |
 | --- | --- | --- |
 | `apply_mode` | `push` | `pr` opens a follow-up PR instead of pushing — use on protected branches |
-| `github_token` | `${{ github.token }}` | needs `contents: write` on the apply job |
+| `github_token` | `${{ github.token }}` | the workflow's `permissions:` block grants `contents: write` — no repo setting needed |
 | `commit_author_name` | `github-actions[bot]` | |
 | `commit_author_email` | `41898282+github-actions[bot]@users.noreply.github.com` | |
 
-`apply_mode: pr` additionally requires *Settings → Actions → General → Allow GitHub Actions
-to create and approve pull requests*.
+The merge job's `contents: write` comes from the workflow's own `permissions:` block, which
+GitHub honours over a read-only repository default — no *Read and write* toggle is required
+unless an org/enterprise policy caps the token. `apply_mode: pr` is the exception: it
+additionally requires *Settings → Actions → General → Allow GitHub Actions to create and
+approve pull requests*, which no `permissions:` block can grant.
 
 ## Outputs
 

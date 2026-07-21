@@ -29,8 +29,10 @@ Expected on public repos; not a factor for branch-based workflows.
 remote: Permission to OWNER/REPO.git denied to github-actions[bot]
 ```
 
-*Settings → Actions → General → Workflow permissions* → **Read and write permissions**.
-The apply job also needs `contents: write` in its `permissions:` block.
+The apply job already declares `contents: write` in its `permissions:` block, which normally
+grants write even under a read-only repository default. A `403` here means an **organisation
+or enterprise policy** is capping the token — flip *Settings → Actions → General → Workflow
+permissions* to **Read and write** (or have an org admin lift the policy).
 
 ### Creating a follow-up PR
 
