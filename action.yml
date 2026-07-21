@@ -1,0 +1,112 @@
+name: 'Playbook & Changelog'
+description: 'Previews doc impact on open PRs and applies playbook/changelog edits on merge.'
+author: 'akramabdulrahman'
+
+inputs:
+  llm_provider:
+    description: 'github (GitHub Models, uses github_token — no new vendor) | anthropic | openai | mock'
+    required: false
+    default: 'mock'
+  llm_model:
+    description: 'Model id. Defaults per provider (github: openai/gpt-4o-mini, anthropic: claude-haiku-4-5-20251001, openai: gpt-4o-mini).'
+    required: false
+    default: ''
+  anthropic_api_key:
+    description: 'API key when llm_provider=anthropic'
+    required: false
+    default: ''
+  openai_api_key:
+    description: 'API key when llm_provider=openai'
+    required: false
+    default: ''
+  github_token:
+    description: 'Token used to comment on PRs and push the docs commit.'
+    required: false
+    default: ${{ github.token }}
+  docs_dir:
+    description: 'Directory holding playbook.md and changelog.md'
+    required: false
+    default: 'docs'
+  max_playbook_chars:
+    description: 'Playbook chars sent to the model'
+    required: false
+    default: '16000'
+  max_diff_chars:
+    description: 'Diff chars sent to the model'
+    required: false
+    default: '8000'
+  data_scope:
+    description: 'metadata (default) = send only PR title, body, commit subjects and file paths. diff = also send a truncated, redacted diff.'
+    required: false
+    default: 'metadata'
+  exclude_paths:
+    description: 'Space/comma separated globs never sent to the model, e.g. "infra/** *.pem secrets/**".'
+    required: false
+    default: ''
+  allow_new_sections:
+    description: 'false (default) pins the playbook to the headings already in the file. true lets the model add new sections.'
+    required: false
+    default: 'false'
+  video_policy:
+    description: 'suggest (default) = nudge for a walkthrough video, never block. require = fail the check when none is linked.'
+    required: false
+    default: 'suggest'
+  video_hosts:
+    description: 'Space/comma separated allowed video hosts. Defaults to loom.com, vimeo.com, youtube.com, youtu.be, wistia.com, vidyard.com, descript.com, scribehow.com, tella.tv, veed.io, screen.studio, zoom.us, drive.google.com and more.'
+    required: false
+    default: ''
+  apply_mode:
+    description: 'push = commit straight onto the base branch. pr = open a follow-up PR (use for protected branches).'
+    required: false
+    default: 'push'
+  commit_author_name:
+    description: 'Git author name for the docs commit'
+    required: false
+    default: 'github-actions[bot]'
+  commit_author_email:
+    description: 'Git author email for the docs commit'
+    required: false
+    default: '41898282+github-actions[bot]@users.noreply.github.com'
+
+outputs:
+  mode:
+    description: 'preview | apply | noop'
+    value: ${{ steps.run.outputs.mode }}
+  changed:
+    description: 'true when docs were written (apply mode)'
+    value: ${{ steps.run.outputs.changed }}
+  video_ok:
+    description: 'true when the PR linked an accepted walkthrough video'
+    value: ${{ steps.run.outputs.video_ok }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Pin the runtime: the scripts need fetch (Node >=18), and runner images rotate.
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - id: run
+      shell: bash
+      run: node "$GITHUB_ACTION_PATH/scripts/main.js"
+      env:
+        INPUT_LLM_PROVIDER: ${{ inputs.llm_provider }}
+        INPUT_LLM_MODEL: ${{ inputs.llm_model }}
+        INPUT_ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        INPUT_OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
+        INPUT_DOCS_DIR: ${{ inputs.docs_dir }}
+        INPUT_MAX_PLAYBOOK_CHARS: ${{ inputs.max_playbook_chars }}
+        INPUT_MAX_DIFF_CHARS: ${{ inputs.max_diff_chars }}
+        INPUT_DATA_SCOPE: ${{ inputs.data_scope }}
+        INPUT_EXCLUDE_PATHS: ${{ inputs.exclude_paths }}
+        INPUT_ALLOW_NEW_SECTIONS: ${{ inputs.allow_new_sections }}
+        INPUT_VIDEO_POLICY: ${{ inputs.video_policy }}
+        INPUT_VIDEO_HOSTS: ${{ inputs.video_hosts }}
+        INPUT_APPLY_MODE: ${{ inputs.apply_mode }}
+        INPUT_COMMIT_AUTHOR_NAME: ${{ inputs.commit_author_name }}
+        INPUT_COMMIT_AUTHOR_EMAIL: ${{ inputs.commit_author_email }}
+
+branding:
+  icon: 'book-open'
+  color: 'purple'

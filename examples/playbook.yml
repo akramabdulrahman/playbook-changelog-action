@@ -1,0 +1,80 @@
+# Copy to .github/workflows/playbook.yml. This file is the entire install.
+#
+# Pin the action by commit SHA, not a moving tag: `@v1` can be repointed at any time,
+# which would change this repo's behaviour with no PR and no notice.
+name: Playbook & Changelog
+
+on:
+  pull_request:
+    # `edited` matters: an author who adds a walkthrough link after opening the PR
+    # should get the preview recomputed so the link is picked up on merge.
+    types: [opened, synchronize, reopened, edited, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read      # required for llm_provider: github (GitHub Models)
+
+jobs:
+  # ---------------------------------------------------------------- preview
+  # Runs on every PR event except the merge. Writes nothing to the repo, so it only
+  # needs read + comment rights.
+  preview:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      models: read
+    concurrency:
+      # Per PR: a new push supersedes the previous preview for that PR only.
+      group: playbook-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: OWNER/playbook-changelog-action@REPLACE_WITH_COMMIT_SHA # v1.0.0
+        with:
+          # 'github' = GitHub Models, billed to this repo and authenticated with the
+          # job's own token. No new vendor, no API key secret to leak.
+          llm_provider: ${{ vars.LLM_PROVIDER || 'github' }}
+          llm_model: ${{ vars.LLM_MODEL }}
+          # Only needed if you switch llm_provider away from 'github'.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          # 'metadata' sends no file contents at all. Switch to 'diff' only for repos
+          # where sending source to the model provider has been signed off.
+          data_scope: metadata
+          exclude_paths: 'infra/** *.pem *.key secrets/**'
+
+  # ------------------------------------------------------------------ apply
+  # Runs only on merge. This is the job that writes to the repo.
+  apply:
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      models: read
+    concurrency:
+      # Per BASE BRANCH, not per PR: two PRs merging at once would otherwise race to
+      # push to main, and the loser's docs would be lost.
+      group: playbook-apply-${{ github.event.pull_request.base.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: OWNER/playbook-changelog-action@REPLACE_WITH_COMMIT_SHA # v1.0.0
+        with:
+          llm_provider: ${{ vars.LLM_PROVIDER || 'github' }}
+          llm_model: ${{ vars.LLM_MODEL }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          data_scope: metadata
+          exclude_paths: 'infra/** *.pem *.key secrets/**'
+          # Protected base branch? Bot pushes are rejected — open a follow-up PR instead.
+          # apply_mode: pr

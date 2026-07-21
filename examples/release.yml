@@ -1,0 +1,38 @@
+# Optional: cut a release from the GitHub UI instead of running the script locally.
+# Actions -> Cut release -> Run workflow -> type the title.
+name: Cut release
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: 'Release title, e.g. v1.4.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/checkout@v4
+        with:
+          repository: OWNER/playbook-changelog-action
+          ref: v1
+          path: .playbook-action
+
+      - run: node .playbook-action/scripts/make-release.js --title "${{ inputs.title }}"
+
+      - name: Commit
+        run: |
+          rm -rf .playbook-action
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git commit -m "docs: cut release ${{ inputs.title }} [skip ci]"
+          git push
