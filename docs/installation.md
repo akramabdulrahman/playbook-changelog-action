@@ -186,7 +186,7 @@ Copy [`examples/playbook.yml`](../examples/playbook.yml) to `.github/workflows/p
 and replace the two `uses:` lines with your action repo and a **commit SHA**:
 
 ```yaml
-- uses: akramabdulrahman/playbook-changelog-action@fcb60e6c7c9f322fbeb6833fa98fba587548d82d # v1.1.5
+- uses: akramabdulrahman/playbook-changelog-action@777b6a2e86964d448356264c1d5bfe795b5ab87f # v1.1.6
 ```
 
 **Pin the SHA, not `@v1`.** `v1` is a moving pointer: whoever owns the action can repoint
@@ -196,7 +196,7 @@ immutable. Update it deliberately, reading [CHANGELOG.md](../CHANGELOG.md) as yo
 Find the commit SHA for a release with:
 
 ```bash
-git rev-parse v1.1.5^{}   # note the ^{} — without it you get the tag object, not the commit
+git rev-parse v1.1.6^{}   # note the ^{} — without it you get the tag object, not the commit
 ```
 
 Commit the workflow to your default branch. It has to exist there before it runs on any pull

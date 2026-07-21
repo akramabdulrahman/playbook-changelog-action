@@ -35,7 +35,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: akramabdulrahman/playbook-changelog-action@fcb60e6c7c9f322fbeb6833fa98fba587548d82d # v1.1.5
+      - uses: akramabdulrahman/playbook-changelog-action@777b6a2e86964d448356264c1d5bfe795b5ab87f # v1.1.6
         with:
           # 'github' = GitHub Models, billed to this repo and authenticated with the
           # job's own token. No new vendor, no API key secret to leak.
@@ -68,7 +68,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: akramabdulrahman/playbook-changelog-action@fcb60e6c7c9f322fbeb6833fa98fba587548d82d # v1.1.5
+      - uses: akramabdulrahman/playbook-changelog-action@777b6a2e86964d448356264c1d5bfe795b5ab87f # v1.1.6
         with:
           llm_provider: ${{ vars.LLM_PROVIDER || 'github' }}
           llm_model: ${{ vars.LLM_MODEL }}
