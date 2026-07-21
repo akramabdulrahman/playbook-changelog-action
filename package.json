@@ -1,6 +1,6 @@
 {
   "name": "playbook-changelog-action",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Self-maintaining playbook and changelog: every PR previews its documentation impact, every merge applies it.",
   "bin": {
     "playbook-install": "scripts/install.js"
