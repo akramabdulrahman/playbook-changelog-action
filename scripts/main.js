@@ -28,6 +28,42 @@ function loadEvent() {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
 
+/**
+ * Someone who pastes only the Marketplace `uses:` snippet gets no triggers and no
+ * checkout, and the failure is otherwise cryptic (empty workspace, git errors, or the
+ * job simply never running). Detect the two misconfigurations we can see from inside a
+ * run and say exactly what is missing, pointing at the installer that writes it correctly.
+ */
+function preflight(event) {
+  const problems = [];
+
+  if (event.pull_request === undefined) {
+    problems.push(
+      `This action must be triggered by a "pull_request" event, but it ran on `
+      + `"${process.env.GITHUB_EVENT_NAME || 'an unknown event'}". The workflow needs:\n`
+      + '      on:\n        pull_request:\n          types: [opened, synchronize, reopened, edited, closed]',
+    );
+  }
+
+  const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
+  if (!fs.existsSync(path.join(workspace, '.git'))) {
+    problems.push(
+      'The repository is not checked out. Add a checkout step *before* this action:\n'
+      + '      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0',
+    );
+  }
+
+  if (problems.length) {
+    console.log('::error::playbook-changelog-action is not wired into a complete workflow.');
+    for (const p of problems) console.log(`::error::${p}`);
+    console.log(
+      '::error::The Marketplace snippet is only the step, not a workflow. Generate the '
+      + 'full workflow with:  npx github:akramabdulrahman/playbook-changelog-action playbook-install',
+    );
+    process.exit(1);
+  }
+}
+
 function resolveMode(event) {
   const pr = event.pull_request;
   if (!pr) return 'noop';
@@ -38,6 +74,7 @@ function resolveMode(event) {
 
 async function main() {
   const event = loadEvent();
+  preflight(event);
   const mode = resolveMode(event);
   setOutput('mode', mode);
 

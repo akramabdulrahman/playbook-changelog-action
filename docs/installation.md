@@ -9,6 +9,20 @@ or one is created from a template on first run.
 
 ---
 
+## Arriving from the Marketplace?
+
+The listing shows a single step:
+
+```yaml
+- uses: akramabdulrahman/playbook-changelog-action@v1.1.4
+```
+
+That is GitHub's generic reference for any action — **it is not a runnable workflow for this
+one.** This action needs its own workflow: `pull_request` triggers, an `actions/checkout`
+step before it, and a preview/apply job pair. Pasted as a bare step it never triggers, or
+fails with a clear error telling you what is missing. Run the installer below (or copy
+[`examples/playbook.yml`](../examples/playbook.yml)); do not paste the one-line snippet.
+
 ## Quickstart
 
 The whole flow, for a repository that already has a `docs/playbook.md` (or any markdown file

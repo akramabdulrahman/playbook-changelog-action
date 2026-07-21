@@ -699,3 +699,14 @@ test('installer: prefers the gh CLI over unauthenticated requests', () => {
   assert.ok(api.indexOf("sh('gh'") < api.indexOf('await fetch'), 'gh must be tried before raw fetch');
   assert.match(api, /GH_TOKEN \|\| process\.env\.GITHUB_TOKEN/, 'an env token is the second route');
 });
+
+test('preflight: the action explains an incomplete workflow instead of failing cryptically', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'main.js'), 'utf8');
+  // Both misconfigurations a pasted Marketplace snippet produces are detected...
+  assert.match(src, /must be triggered by a "pull_request" event/, 'must catch missing triggers');
+  assert.match(src, /repository is not checked out/, 'must catch missing checkout');
+  // ...and the remedy points at the installer, not a stack trace.
+  assert.match(src, /playbook-install/, 'must point at the installer');
+  // preflight runs before any real work.
+  assert.match(src, /preflight\(event\);\n\s*const mode = resolveMode/, 'preflight must run first');
+});
