@@ -39,6 +39,9 @@ models and sends it for the ones that accept it — no configuration is needed e
 **OpenAI (`openai`)** accepts any chat-completions model and is requested with
 `response_format: json_object`.
 
+Both `anthropic` and `openai` require an API key stored as a repository or organisation
+secret. See [API keys](secrets.md) for placement, the exposure model, and mitigations.
+
 **`mock`** routes sections by keyword regex and makes no network call. It is intended for
 CI and for exercising the workflow before a provider is chosen. It is not a model and
 should not be used as a production setting.

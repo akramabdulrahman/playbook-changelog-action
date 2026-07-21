@@ -156,3 +156,23 @@ test('docs: a SHA labelled with a version tag really is that tag', () => {
   }
   assert.deepEqual(mismatches, [], `version/SHA drift:\n${mismatches.join('\n')}`);
 });
+
+test('docs: providers requiring a key point at the secret-handling guidance', () => {
+  const secrets = read('docs/secrets.md');
+  for (const claim of [
+    'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
+    'Fork pull requests do not receive secrets',
+    'CODEOWNERS',
+    'bitwarden/sm-action',
+  ]) {
+    assert.ok(secrets.includes(claim), `secrets.md must cover "${claim}"`);
+  }
+  // Every page that names a provider key must route the reader to the guidance.
+  for (const file of ['README.md', 'docs/installation.md', 'docs/configuration.md']) {
+    const body = read(file);
+    if (/ANTHROPIC_API_KEY|OPENAI_API_KEY/.test(body)) {
+      assert.match(body, /secrets\.md/, `${file} names a provider key but never links secrets.md`);
+    }
+  }
+});

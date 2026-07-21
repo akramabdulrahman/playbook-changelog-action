@@ -17,6 +17,7 @@ on demand  ──▶  make-release.js    (rolls the changelog into a release)
 | **[Usage](docs/usage.md)** | Behaviour per event, writing PRs, cutting releases |
 | **[Configuration](docs/configuration.md)** | Every input, with worked examples |
 | **[Troubleshooting](docs/troubleshooting.md)** | Symptoms, causes, fixes |
+| **[API keys](docs/secrets.md)** | Where keys go, what the exposure is, and how to narrow it |
 | **[GDPR notes](docs/gdpr.md)** | What leaves the runner, and under whose agreement |
 | **[Changelog](CHANGELOG.md)** | Releases. Pin a commit SHA rather than a tag. |
 
@@ -48,9 +49,11 @@ A fourth value, `mock`, resolves sections by keyword and makes no network call. 
 for tests and for trying the workflow without a provider; it is not a model.
 
 **GitHub Models is the default.** It requires `models: read` on the job, introduces no
-processor beyond GitHub, and needs no API key — so there is no key to leak. The other two
-providers accept any model their API exposes via `llm_model`; for Anthropic that includes
-`claude-opus-4-8` and `claude-sonnet-5` alongside the Haiku default.
+processor beyond GitHub, and needs no API key — so there is no key to store or leak. The
+other two providers accept any model their API exposes via `llm_model`; for Anthropic that
+includes `claude-opus-4-8` and `claude-sonnet-5` alongside the Haiku default, and they
+require a repository or organisation secret — see [API keys](docs/secrets.md) for where it
+goes and what the exposure is.
 
 Whichever provider runs, a failed call degrades to a changelog entry and reports the
 failure in the comment rather than failing the pull request.

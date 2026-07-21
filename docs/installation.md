@@ -55,11 +55,14 @@ needs only the workflow file from step 3.
 <details>
 <summary>Using OpenAI or Anthropic instead</summary>
 
-Set `LLM_PROVIDER` to `openai` or `anthropic`, then add the matching **secret**
-(`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`) under the *Secrets* tab.
+Set `LLM_PROVIDER` to `openai` or `anthropic`, then add the matching **secret** —
+`OPENAI_API_KEY` or `ANTHROPIC_API_KEY` — under *Settings → Secrets and variables →
+Actions → Secrets*. Organisation-level secrets avoid a copy per repository.
 
-Be aware this introduces a new data processor. Read [GDPR notes](gdpr.md) before doing this
-on a client repository.
+Two things to read first: [API keys](secrets.md) covers what the exposure is and how to
+narrow it (dedicated capped key, `CODEOWNERS` on `.github/**`, and where Bitwarden does and
+does not help), and [GDPR notes](gdpr.md) covers the new data processor this introduces on
+a client repository.
 
 </details>
 
