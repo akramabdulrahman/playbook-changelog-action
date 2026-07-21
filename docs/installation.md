@@ -14,7 +14,7 @@ or one is created from a template on first run.
 The listing shows a single step:
 
 ```yaml
-- uses: akramabdulrahman/playbook-changelog-action@v1.1.4
+- uses: akramabdulrahman/playbook-changelog-action@v1.1.5
 ```
 
 That is GitHub's generic reference for any action — **it is not a runnable workflow for this
@@ -165,7 +165,7 @@ Copy [`examples/playbook.yml`](../examples/playbook.yml) to `.github/workflows/p
 and replace the two `uses:` lines with your action repo and a **commit SHA**:
 
 ```yaml
-- uses: akramabdulrahman/playbook-changelog-action@3a1dfa0bca13e2d30f5b8278c87e3e58a7bd7b2b # v1.1.4
+- uses: akramabdulrahman/playbook-changelog-action@fcb60e6c7c9f322fbeb6833fa98fba587548d82d # v1.1.5
 ```
 
 **Pin the SHA, not `@v1`.** `v1` is a moving pointer: whoever owns the action can repoint
@@ -175,7 +175,7 @@ immutable. Update it deliberately, reading [CHANGELOG.md](../CHANGELOG.md) as yo
 Find the commit SHA for a release with:
 
 ```bash
-git rev-parse v1.1.4^{}   # note the ^{} — without it you get the tag object, not the commit
+git rev-parse v1.1.5^{}   # note the ^{} — without it you get the tag object, not the commit
 ```
 
 Commit the workflow to your default branch. It has to exist there before it runs on any pull
