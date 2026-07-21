@@ -57,6 +57,21 @@ function inspectTarget() {
   return { root, slug, defaultBranch, owner: slug ? slug.split('/')[0] : null };
 }
 
+/** Is the action repo public? A public action resolves across owners; a private one does not. */
+async function isPublicRepo(slug) {
+  if (!slug) return false;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${slug}`, {
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'playbook-installer' },
+    });
+    if (!res.ok) return false;
+    const json = await res.json();
+    return json.private === false;
+  } catch {
+    return false;
+  }
+}
+
 /** Resolve a tag to the commit it points at, via the API. Annotated tags need a deref. */
 async function resolveTagSha(slug, tag) {
   const get = async (url) => {
@@ -152,13 +167,15 @@ async function main() {
   console.log(`  action source    ${action.slug || ACTION_ROOT}`);
   console.log(`  pinning          ${action.sha ? action.sha.slice(0, 12) : '(unknown)'}${action.tag ? ` (${action.tag})` : ''}`);
 
-  // Cross-owner private actions cannot be resolved; vendor instead.
+  // Only a PRIVATE action fails to resolve across owners. A public one is fine as-is.
   const crossOwner = Boolean(action.owner && target.owner && action.owner !== target.owner);
-  const vendor = has('vendor') || (crossOwner && !has('no-vendor'));
-  if (crossOwner && !has('vendor') && !has('no-vendor')) {
-    console.log(c.yellow(`\n  ! The action lives under "${action.owner}" and this repo under "${target.owner}".`));
+  const actionIsPublic = crossOwner ? await isPublicRepo(action.slug) : true;
+  const needsVendor = crossOwner && !actionIsPublic;
+  const vendor = has('vendor') || (needsVendor && !has('no-vendor'));
+  if (needsVendor && !has('vendor') && !has('no-vendor')) {
+    console.log(c.yellow(`\n  ! The action is private and lives under "${action.owner}", this repo under "${target.owner}".`));
     console.log(c.yellow('    GitHub cannot resolve a private action across owners, so it will be vendored.'));
-    console.log(c.dim('    Publish it under this org and re-run with --no-vendor for the clean install.'));
+    console.log(c.dim('    Publish it, or move it into this org, then re-run with --no-vendor.'));
   }
 
   const workflowPath = path.join(target.root, WORKFLOW_PATH);

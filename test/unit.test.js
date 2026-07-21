@@ -656,3 +656,9 @@ test('installer: package.json exposes the repo so npx can resolve a tag', () => 
   assert.ok(pkg.version, 'version becomes the tag looked up via the API');
   assert.equal(pkg.bin['playbook-install'], 'scripts/install.js');
 });
+
+test('installer: only a PRIVATE cross-owner action needs vendoring', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'install.js'), 'utf8');
+  assert.match(src, /const needsVendor = crossOwner && !actionIsPublic/, 'public cross-owner must not vendor');
+  assert.match(src, /json\.private === false/, 'visibility must come from the API, not be assumed');
+});
