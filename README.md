@@ -40,7 +40,7 @@ you need to change. `--dry-run` first if you prefer. Full walkthrough:
 # .github/workflows/playbook.yml — see examples/playbook.yml for the full file
 - uses: actions/checkout@v4
   with: { fetch-depth: 0 }
-- uses: akramabdulrahman/playbook-changelog-action@258bc2c56872bef56c2c55da54115e8eec008f4b # v1.0.0
+- uses: akramabdulrahman/playbook-changelog-action@9543e947da79c4b32de57aa8b359789fcd5644ea # v1.0.3
   with:
     llm_provider: github     # GitHub Models — no API key needed
     data_scope: metadata     # no file contents leave the runner
